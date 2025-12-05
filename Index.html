@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Public Chat — Password Protected</title>
+  <style>
+    :root{--bg:#f3f6fb;--card:#fff;--accent:#276ef1;--muted:#6b7280}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#eef6ff 0%,var(--bg) 100%);font-family:Inter,system-ui,-apple-system,"Noto Sans Bengali",sans-serif;color:#111}
+    .container{max-width:920px;margin:0 auto;padding:16px;display:flex;flex-direction:column;height:100vh;box-sizing:border-box}
+    header{display:flex;align-items:center;gap:12px;padding:6px 4px}
+    .app{flex:1;display:flex;flex-direction:column;gap:12px;min-height:0}
+    .chat-card{background:var(--card);border-radius:12px;padding:12px;flex:1;display:flex;flex-direction:column;box-shadow:0 6px 20px rgba(34,60,80,0.06);min-height:0}
+    #messages{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
+    .msg{max-width:78%;padding:10px 12px;border-radius:12px;box-shadow:0 2px 6px rgba(16,24,40,0.04);position:relative;word-break:break-word}
+    .msg--left{align-self:flex-start;background:#fff}
+    .msg--right{align-self:flex-end;background:#e8f0ff}
+    .time{font-size:11px;color:var(--muted);margin-top:6px;text-align:right}
+    .chat-footer{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;padding:12px;background:linear-gradient(to top, rgba(243,246,251,0.95), rgba(243,246,251,0.6));box-shadow:0 -8px 30px rgba(16,24,40,0.06);backdrop-filter: blur(4px);z-index:40;padding-bottom:calc(env(safe-area-inset-bottom)+12px)}
+    .composer{width:100%;max-width:920px;display:flex;gap:8px;align-items:center}
+    .input{flex:1;display:flex;gap:8px;align-items:center;background:#fff;border-radius:999px;padding:8px;border:1px solid rgba(16,24,40,0.06)}
+    .input input{flex:1;border:0;outline:none;padding:10px 8px;font-size:15px;border-radius:8px}
+    button.send{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:10px;font-weight:600}
+    .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:#111;color:#fff;padding:8px 12px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:all .25s ease;z-index:60}
+    .toast.show{opacity:1;bottom:120px}
+    /* overlay lock */
+    .overlay{position:fixed;inset:0;background:rgba(6,10,23,0.6);display:flex;align-items:center;justify-content:center;z-index:9999}
+    .lockbox{background:#fff;padding:22px;border-radius:12px;max-width:420px;width:92%;box-shadow:0 14px 40px rgba(2,6,23,0.5);text-align:center}
+    .lockbox input{width:100%;padding:12px;border-radius:8px;border:1px solid #ddd;margin-top:8px;font-size:16px}
+    .lockbox button{margin-top:12px;padding:10px 14px;border-radius:8px;border:0;background:var(--accent);color:#fff;font-weight:600}
+    .err{color:#b83b3b;margin-top:8px;font-size:14px}
+  </style>
+</head>
+<body>
+  <!-- LOCK OVERLAY (shown until correct password given) -->
+  <div id="overlay" class="overlay" aria-hidden="false">
+    <div class="lockbox" role="dialog" aria-modal="true" aria-labelledby="locktitle">
+      <h2 id="locktitle">Enter Password to Open Chat</h2>
+      <p style="color:#555;margin:6px 0">Password একবার দিলেই cookie-এ save থাকবে (30 দিন)।</p>
+      <input id="pwInput" type="password" placeholder="Password" autocomplete="current-password" />
+      <button id="pwBtn">Unlock</button>
+      <div id="pwErr" class="err" role="status" aria-live="polite" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="container" id="app" style="visibility:hidden">
+    <header>
+      <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36'><rect rx='8' width='36' height='36' fill='%23276ef1'/><text x='50%' y='56%' font-size='18' font-family='Arial' fill='white' text-anchor='middle' dominant-baseline='middle'>C</text></svg>" alt="logo" style="width:36px;height:36px;border-radius:8px">
+      <div>
+        <h1>Public Chat</h1>
+        <div style="font-size:13px;color:#6b7280">Anonymous public chat — পাসওয়ার্ড-প্রোটেক্টেড</div>
+      </div>
+    </header>
+
+    <div class="app">
+      <div class="chat-card" id="chatCard">
+        <div style="font-size:13px;color:#6b7280;text-align:center;margin-bottom:8px">মেসেজে ট্যাপ করলে কপি হবে</div>
+        <div id="messages" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- fixed composer -->
+  <div class="chat-footer" id="chatFooter" style="visibility:hidden">
+    <div class="composer" style="max-width:920px;">
+      <div class="input" id="inputWrap">
+        <input id="textInput" type="text" inputmode="text" placeholder="Message লিখে Enter চাপো অথবা Send টিপো..." autocomplete="off" />
+      </div>
+      <button class="send" id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Copied to clipboard</div>
+
+  <script type="module">
+    // ======= SECURITY: we store only SHA-256 hash here (NOT plain password) ======
+    // For password "123789" SHA-256 is:
+    const PASSWORD_HASH = 'b7158b64a98516b31d0c23609f69265a868c594dda5b3c8da9e13159e209c9b6';
+
+    // cookie helpers
+    function setCookie(name, value, days) {
+      const d = new Date();
+      d.setTime(d.getTime() + (days*24*60*60*1000));
+      document.cookie = name + '=' + encodeURIComponent(value) + ';path=/;expires=' + d.toUTCString() + ';SameSite=Lax';
+    }
+    function getCookie(name) {
+      const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return v ? decodeURIComponent(v.pop()) : null;
+    }
+
+    // compute SHA-256 hex string (returns Promise)
+    async function sha256hex(str) {
+      const enc = new TextEncoder();
+      const data = enc.encode(str);
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      const arr = Array.from(new Uint8Array(hash));
+      return arr.map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+
+    // overlay elements
+    const overlay = document.getElementById('overlay');
+    const pwInput = document.getElementById('pwInput');
+    const pwBtn = document.getElementById('pwBtn');
+    const pwErr = document.getElementById('pwErr');
+
+    // main UI elements to reveal after auth
+    const appEl = document.getElementById('app');
+    const chatFooter = document.getElementById('chatFooter');
+
+    // check cookie on load
+    (async () => {
+      const saved = getCookie('chat_auth');
+      if (saved === '1') {
+        // already unlocked
+        unlockUI();
+      } else {
+        overlay.style.display = 'flex';
+        pwInput.focus();
+      }
+    })();
+
+    async function tryPassword(pw) {
+      pwErr.style.display = 'none';
+      try {
+        const h = await sha256hex(pw);
+        if (h === PASSWORD_HASH) {
+          // correct
+          setCookie('chat_auth','1',30); // 30 days
+          unlockUI();
+          return true;
+        } else {
+          pwErr.textContent = 'Password ভুল — আবার চেষ্টা করো';
+          pwErr.style.display = 'block';
+          return false;
+        }
+      } catch (e) {
+        pwErr.textContent = 'Error occurred';
+        pwErr.style.display = 'block';
+        return false;
+      }
+    }
+
+    pwBtn.addEventListener('click', async () => {
+      await tryPassword(pwInput.value || '');
+      pwInput.value = '';
+    });
+    pwInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        await tryPassword(pwInput.value || '');
+        pwInput.value = '';
+      }
+    });
+
+    function unlockUI() {
+      overlay.style.display = 'none';
+      appEl.style.visibility = 'visible';
+      chatFooter.style.visibility = 'visible';
+      initChat(); // start firebase & chat logic
+    }
+
+    // ========== CHAT: Firebase init & UI logic ==========
+    // place Firebase config below (yours)
+    const firebaseConfig = {
+      apiKey: "AIzaSyD_Z7-3oe8KK5XA6OyKe0D-tS_Z6KKmyZY",
+      authDomain: "mychat-c5b4e.firebaseapp.com",
+      databaseURL: "https://mychat-c5b4e-default-rtdb.firebaseio.com",
+      projectId: "mychat-c5b4e",
+      storageBucket: "mychat-c5b4e.firebasestorage.app",
+      messagingSenderId: "1023283718484",
+      appId: "1:1023283718484:web:c58197b559aa1e790640c1",
+      measurementId: "G-YB9XZPPH41"
+    };
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js";
+
+    let db, messagesRef;
+    const messagesEl = document.getElementById('messages');
+    const textInput = document.getElementById('textInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const toast = document.getElementById('toast');
+
+    function showToast(txt){
+      toast.textContent = txt;
+      toast.classList.add('show');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(()=> toast.classList.remove('show'), 1500);
+    }
+
+    function renderMessage(data){
+      const wrapper = document.createElement('div');
+      // alternate side for visual variety
+      const side = (data._side === 'right') ? 'msg--right' : 'msg--left';
+      wrapper.className = 'msg ' + side;
+      const text = document.createElement('div');
+      text.textContent = data.text || '';
+      const t = document.createElement('div');
+      t.className = 'time';
+      t.textContent = (data.time ? new Date(data.time).toLocaleString() : '');
+      wrapper.appendChild(text);
+      wrapper.appendChild(t);
+
+      wrapper.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(data.text || '');
+          showToast('Copied: ' + ((data.text||'').slice(0,30) + (data.text && data.text.length>30 ? '…' : '')));
+        } catch (e) {
+          showToast('Copy failed');
+        }
+      });
+
+      messagesEl.appendChild(wrapper);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function initChat(){
+      // initialize firebase and listeners
+      const app = initializeApp(firebaseConfig);
+      db = getDatabase(app);
+      messagesRef = ref(db, "messages");
+
+      onChildAdded(query(messagesRef, limitToLast(200)), snap => {
+        const val = snap.val();
+        renderMessage(val);
+      });
+
+      sendBtn.addEventListener('click', sendMessage);
+      textInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+      });
+
+      // scroll behavior for mobile keyboards
+      window.addEventListener('resize', () => {
+        setTimeout(()=> { messagesEl.scrollTop = messagesEl.scrollHeight; window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' }); }, 120);
+      });
+    }
+
+    async function sendMessage(){
+      const txt = textInput.value.trim();
+      if (!txt) return;
+      const side = (Math.random()>0.5) ? 'right' : 'left';
+      await push(messagesRef, { text: txt, time: Date.now(), _side: side });
+      textInput.value = '';
+      textInput.focus();
+    }
+  </script>
+</body>
+  </html>
