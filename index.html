@@ -3,13 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Public Chat — Secure UI</title>
+  <title>Public Chat — Debug Friendly</title>
   <style>
     :root{--bg:#f3f6fb;--card:#fff;--accent:#276ef1;--muted:#6b7280}
     html,body{height:100%;margin:0;background:linear-gradient(180deg,#eef6ff 0%,var(--bg) 100%);font-family:Inter,system-ui,"Noto Sans Bengali",sans-serif;color:#111}
     .wrap{max-width:920px;margin:0 auto;padding:16px;display:flex;flex-direction:column;height:100vh;box-sizing:border-box}
     header{display:flex;align-items:center;gap:12px;padding:6px 4px}
     h1{margin:0;font-size:20px}
+    .status{font-size:13px;color:var(--muted);margin-left:8px}
     .chat-card{background:var(--card);border-radius:12px;padding:12px;flex:1;display:flex;flex-direction:column;box-shadow:0 6px 20px rgba(34,60,80,0.06);min-height:0}
     #messages{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
     .msg{max-width:78%;padding:10px 12px;border-radius:12px;box-shadow:0 2px 6px rgba(16,24,40,0.04);position:relative;word-break:break-word}
@@ -24,43 +25,29 @@
     button.send{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:10px;font-weight:600}
     .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:12vh;background:#111;color:#fff;padding:8px 12px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:all .25s ease;z-index:60}
     .toast.show{opacity:1}
-    /* overlay lock */
-    .overlay{position:fixed;inset:0;background:rgba(6,10,23,0.6);display:flex;align-items:center;justify-content:center;z-index:9999}
-    .lockbox{background:#fff;padding:22px;border-radius:12px;max-width:420px;width:92%;box-shadow:0 14px 40px rgba(2,6,23,0.5);text-align:center}
-    .lockbox input{width:100%;padding:12px;border-radius:8px;border:1px solid #ddd;margin-top:8px;font-size:16px}
-    .lockbox button{margin-top:12px;padding:10px 14px;border-radius:8px;border:0;background:var(--accent);color:#fff;font-weight:600}
-    .err{color:#b83b3b;margin-top:8px;font-size:14px}
-    @media (max-width:480px){ .chat-card{padding:10px} .input input{font-size:14px} }
+    .debug{font-size:13px;color:#b03;margin-top:6px}
   </style>
 </head>
 <body>
-  <!-- Password overlay (uses localStorage for persistence) -->
-  <div id="overlay" class="overlay" style="display:none" aria-hidden="true">
-    <div class="lockbox" role="dialog" aria-modal="true" aria-labelledby="locktitle">
-      <h2 id="locktitle">Enter Password to Open Chat</h2>
-      <p style="color:#555;margin:6px 0">Password দিন — একবার দিলেই এই ব্রাউজারে আর দরকার হবে না (30 দিন)।</p>
-      <input id="pwInput" type="password" placeholder="Password" autocomplete="current-password" />
-      <button id="pwBtn">Unlock</button>
-      <div id="pwErr" class="err" role="status" aria-live="polite" style="display:none"></div>
-    </div>
-  </div>
-
-  <div class="wrap" id="mainWrap" style="visibility:hidden">
+  <div class="wrap">
     <header>
       <div style="width:44px;height:44px;background:#276ef1;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">C</div>
       <div>
         <h1>Public Chat</h1>
-        <div style="font-size:13px;color:var(--muted)">Anonymous public chat — পাসওয়ার্ড নিরাপত্তা আছে</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="status" id="status">Connecting…</span>
+          <span id="status-emoji"></span>
+        </div>
       </div>
     </header>
 
     <div class="chat-card">
-      <div class="hint">মেসেজে ট্যাপ করলে কপি হবে</div>
+      <div class="hint" id="hint">Loading messages…</div>
       <div id="messages" aria-live="polite"></div>
+      <div id="debugArea" class="debug" style="display:none"></div>
     </div>
   </div>
 
-  <!-- fixed composer -->
   <div class="chat-footer" id="chatFooter" style="visibility:hidden">
     <div class="composer">
       <div class="input">
@@ -73,7 +60,7 @@
   <div class="toast" id="toast">Copied</div>
 
   <script type="module">
-    // ---------------- FIREBASE CONFIG ----------------
+    // ---------- config ----------
     const firebaseConfig = {
       apiKey: "AIzaSyD_Z7-3oe8KK5XA6OyKe0D-tS_Z6KKmyZY",
       authDomain: "mychat-c5b4e.firebaseapp.com",
@@ -85,91 +72,81 @@
       measurementId: "G-YB9XZPPH41"
     };
 
-    // SHA-256 of "123789"
-    const PASSWORD_HASH = 'b7158b64a98516b31d0c23609f69265a868c594dda5b3c8da9e13159e209c9b6';
-
-    // elements
-    const overlay = document.getElementById('overlay');
-    const pwInput = document.getElementById('pwInput');
-    const pwBtn = document.getElementById('pwBtn');
-    const pwErr = document.getElementById('pwErr');
-    const mainWrap = document.getElementById('mainWrap');
-    const chatFooter = document.getElementById('chatFooter');
+    // UI elements
+    const statusEl = document.getElementById('status');
+    const hintEl = document.getElementById('hint');
     const messagesEl = document.getElementById('messages');
+    const debugEl = document.getElementById('debugArea');
     const textInput = document.getElementById('textInput');
     const sendBtn = document.getElementById('sendBtn');
+    const chatFooter = document.getElementById('chatFooter');
     const toast = document.getElementById('toast');
 
     function showToast(txt){
       toast.textContent = txt;
       toast.classList.add('show');
-      clearTimeout(window._toastTimer);
-      window._toastTimer = setTimeout(()=> toast.classList.remove('show'), 1500);
+      clearTimeout(window._t);
+      window._t = setTimeout(()=> toast.classList.remove('show'), 1400);
+    }
+    function setStatus(txt, color = '#6b7280'){ statusEl.textContent = txt; statusEl.style.color = color; }
+
+    // small helper to show debug error
+    function showDebug(msg){
+      debugEl.style.display = 'block';
+      debugEl.textContent = msg;
+      console.warn('CHAT-DEBUG:', msg);
     }
 
-    async function sha256hex(str) {
-      const enc = new TextEncoder();
-      const data = enc.encode(str);
-      const hash = await crypto.subtle.digest('SHA-256', data);
-      return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    }
-
-    // ---------------- AUTH: localStorage based ----------------
-    const STORAGE_KEY = 'chat_auth_v1';
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if(saved === '1') {
-      unlockUI();
-    } else {
-      overlay.style.display = 'flex';
-      pwInput.focus();
-    }
-
-    async function tryPassword(pw){
-      pwErr.style.display = 'none';
-      try {
-        const h = await sha256hex(pw||'');
-        if(h === PASSWORD_HASH){
-          // set localStorage flag (expires logic: we'll store timestamp too)
-          localStorage.setItem(STORAGE_KEY, '1');
-          localStorage.setItem(STORAGE_KEY + '_ts', Date.now().toString());
-          unlockUI();
-          return true;
-        } else {
-          pwErr.textContent = 'Password ভুল — আবার চেষ্টা করো';
-          pwErr.style.display = 'block';
-          return false;
-        }
-      } catch(e){
-        pwErr.textContent = 'Error occurred';
-        pwErr.style.display = 'block';
-        return false;
-      }
-    }
-    pwBtn.addEventListener('click', async ()=>{ await tryPassword(pwInput.value); pwInput.value=''; });
-    pwInput.addEventListener('keydown', async (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); await tryPassword(pwInput.value); pwInput.value=''; } });
-
-    function unlockUI(){
-      overlay.style.display = 'none';
-      mainWrap.style.visibility = 'visible';
-      chatFooter.style.visibility = 'visible';
-      initChat();
-    }
-
-    // ---------------- CLIENT ID (consistent side) ----------------
+    // client id
     let CLIENT_ID = localStorage.getItem('chat_clientId');
-    if(!CLIENT_ID){
-      CLIENT_ID = 'c_' + Math.random().toString(36).slice(2,10);
-      localStorage.setItem('chat_clientId', CLIENT_ID);
-    }
+    if(!CLIENT_ID){ CLIENT_ID = 'c_' + Math.random().toString(36).slice(2,10); localStorage.setItem('chat_clientId', CLIENT_ID); }
 
-    // ---------------- FIREBASE + CHAT ----------------
+    // imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js";
     import { getDatabase, ref, push, onChildAdded, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js";
 
+    // try initialize and attach listeners safely
     let db, messagesRef;
+    try {
+      const app = initializeApp(firebaseConfig);
+      const database = getDatabase(app);
+      db = database;
+      messagesRef = ref(db, 'messages');
+      setStatus('Connected ✅', '#0a8a0a');
+      hintEl.textContent = 'Messages টিপলে copy হবে';
+      chatFooter.style.visibility = 'visible';
+    } catch (e){
+      setStatus('Init failed ❌', '#b03');
+      showDebug('Firebase initialize failed: ' + (e && e.message ? e.message : e));
+      // don't continue if firebase init failed
+    }
 
+    // if DB initialized, attach listener
+    if(messagesRef){
+      try {
+        // show last 200 messages
+        onChildAdded(query(messagesRef, limitToLast(200)), snap => {
+          try {
+            const val = snap.val();
+            if(!val) return;
+            renderMessage(val);
+          } catch (err) {
+            showDebug('Render error: ' + err && err.message);
+          }
+        });
+        // success
+        setStatus('Live — receiving messages', '#0a6');
+        hintEl.textContent = 'মেসেজ ট্যাপ করলে কপি হবে';
+      } catch (e){
+        setStatus('Listener failed ❌', '#b03');
+        showDebug('Listener attach failed: ' + (e && e.message ? e.message : e));
+      }
+    } else {
+      showDebug('messagesRef not available');
+    }
+
+    // render message
     function escapeHTML(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
-
     function renderMessage(data){
       const el = document.createElement('div');
       const isMe = data.clientId && data.clientId === CLIENT_ID;
@@ -178,52 +155,41 @@
       el.innerHTML = `<div>${safe}</div><div class="time">${data.time?new Date(data.time).toLocaleString():''}</div>`;
       el.addEventListener('click', async ()=> {
         try { await navigator.clipboard.writeText(data.text||''); showToast('Copied'); }
-        catch(e){ showToast('Copy failed'); }
+        catch(e){ showToast('Copy failed'); console.error(e); }
       });
       messagesEl.appendChild(el);
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
-    function initChat(){
-      const app = initializeApp(firebaseConfig);
-      db = getDatabase(app);
-      messagesRef = ref(db, 'messages');
-
-      onChildAdded(query(messagesRef, limitToLast(200)), snap => {
-        const val = snap.val();
-        renderMessage(val);
-      });
-
-      sendBtn.addEventListener('click', sendMessage);
-      textInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter'){ e.preventDefault(); sendMessage(); } });
-
-      window.addEventListener('resize', ()=>{ setTimeout(()=> { messagesEl.scrollTop = messagesEl.scrollHeight; window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' }); }, 120); });
-      setTimeout(()=> { messagesEl.scrollTop = messagesEl.scrollHeight; }, 400);
-    }
-
+    // send
     async function sendMessage(){
       const txt = textInput.value.trim();
       if(!txt) return;
+      if(!messagesRef){ showToast('Not connected'); return; }
       try {
         await push(messagesRef, { text: txt, time: Date.now(), clientId: CLIENT_ID });
         textInput.value = '';
         textInput.focus();
-      } catch(e){
+      } catch (e){
         showToast('Send failed');
+        showDebug('Send failed: ' + (e && e.message ? e.message : e));
       }
     }
 
-    // optional: expire saved auth after 30 days (client-side)
-    (function maybeExpireAuth(){
-      const ts = parseInt(localStorage.getItem(STORAGE_KEY + '_ts') || '0', 10);
-      if(ts){
-        const days = (Date.now() - ts) / (1000*60*60*24);
-        if(days > 30){
-          localStorage.removeItem(STORAGE_KEY);
-          localStorage.removeItem(STORAGE_KEY + '_ts');
-        }
+    sendBtn.addEventListener('click', sendMessage);
+    textInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter'){ e.preventDefault(); sendMessage(); } });
+
+    // network and visibility handling
+    window.addEventListener('offline', () => { setStatus('Offline — check network', '#b03'); showDebug('You are offline'); });
+    window.addEventListener('online', () => { setStatus('Online — reconnecting…', '#d90'); setTimeout(()=> setStatus('Live — receiving messages', '#0a6'), 1200); });
+
+    // initial no-messages hint
+    setTimeout(()=> {
+      if(messagesEl.children.length === 0) {
+        hintEl.textContent = 'কোনো message পাওয়া যায়নি — Send করে দেখো';
       }
-    })();
+    }, 800);
+
   </script>
 </body>
 </html>
