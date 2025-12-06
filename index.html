@@ -1,153 +1,98 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Neon Dark Chat — Public</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-dark: #121212;
-            --bg-surface: #1e1e1e;
-            --accent-green: #00ff80;
-            --text-light: #f0f0f0;
-            --text-secondary: #999;
-        }
-        *{box-sizing:border-box;margin:0;padding:0}
-        body{
-            font-family:'Poppins',sans-serif;
-            background-color:var(--bg-dark);
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            min-height:100vh;
-            padding:20px;
-            color:var(--text-light);
-        }
-        .chat-container{
-            width:100%;
-            max-width:650px;
-            height:90vh;
-            background-color:var(--bg-surface);
-            border-radius:20px;
-            box-shadow:0 0 20px rgba(0,0,0,0.5),0 0 50px rgba(0,0,0,0.2);
-            display:flex;
-            flex-direction:column;
-            overflow:hidden;
-        }
-        .chat-header{
-            background-color:var(--bg-surface);
-            color:var(--text-light);
-            padding:18px 25px;
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            font-weight:600;
-            border-bottom:2px solid var(--accent-green);
-            box-shadow:0 2px 10px rgba(0,255,128,0.06);
-            height:75px;
-        }
-        .header-info{display:flex;flex-direction:column;justify-content:center}
-        .main-title{font-size:1.2em;margin:0;font-weight:700}
-        .live-status{font-size:0.8em;font-weight:400;color:var(--accent-green);display:flex;align-items:center;margin-top:2px}
-        .live-dot{height:8px;width:8px;background-color:var(--accent-green);border-radius:50%;margin-right:6px;box-shadow:0 0 5px var(--accent-green),0 0 10px var(--accent-green);animation:pulse 1.5s infinite}
-        @keyframes pulse{0%{transform:scale(0.9);opacity:0.7}50%{transform:scale(1.1);opacity:1}100%{transform:scale(0.9);opacity:0.7}}
-        .online-count{font-size:0.9em;color:var(--text-secondary)}
-
-        .chat-messages{flex-grow:1;padding:20px 25px;overflow-y:auto;display:flex;flex-direction:column;gap:15px;background:linear-gradient(180deg,rgba(0,0,0,0.02),transparent)}
-        .chat-messages::-webkit-scrollbar{width:6px}
-        .chat-messages::-webkit-scrollbar-thumb{background:#444;border-radius:3px}
-
-        .message{display:flex}
-        .msg-bubble{max-width:75%;padding:12px 18px;border-radius:20px;line-height:1.5;font-size:0.95em;position:relative;color:var(--text-light)}
-        .msg-username{display:block;font-weight:700;font-size:0.85em;margin-bottom:3px}
-        .msg-time{display:block;text-align:right;font-size:0.7em;margin-top:5px;color:var(--text-secondary)}
-
-        .message-in{justify-content:flex-start}
-        .message-in .msg-bubble{background-color:#333;border-top-left-radius:5px}
-        .message-in .msg-username{color:var(--accent-green)}
-
-        .message-out{justify-content:flex-end}
-        .message-out .msg-bubble{background-color:#004d2b;border-top-right-radius:5px;box-shadow:0 0 10px rgba(0,255,128,0.6),inset 0 0 5px rgba(255,255,255,0.1)}
-        .message-out .msg-time{color:var(--text-light);opacity:0.7}
-
-        .chat-input-area{padding:15px 25px;background-color:#222;border-top:1px solid #333}
-        .chat-input-wrapper{display:flex;align-items:center;background-color:var(--bg-surface);border:1px solid var(--accent-green);border-radius:30px;padding:5px;box-shadow:0 0 10px rgba(0,255,128,0.3)}
-        .chat-input-wrapper input{flex-grow:1;padding:10px 18px;border:none;background:transparent;font-size:1em;outline:none;color:var(--text-light)}
-        .chat-input-wrapper input::placeholder{color:var(--text-secondary)}
-        .send-button{background-color:var(--accent-green);color:var(--bg-dark);width:45px;height:45px;border:none;border-radius:50%;cursor:pointer;display:flex;justify-content:center;align-items:center;transition:all 0.2s;box-shadow:0 0 10px var(--accent-green)}
-        .send-button:hover{background-color:#4dffa3;box-shadow:0 0 15px var(--accent-green);transform:scale(1.05)}
-        .send-button svg{width:20px;height:20px;transform:translateX(2px)}
-
-        /* overlay (password) */
-        .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999}
-        .lockbox{background:var(--bg-surface);padding:22px;border-radius:12px;max-width:420px;width:92%;box-shadow:0 14px 40px rgba(0,0,0,0.6);text-align:center;color:var(--text-light)}
-        .lockbox input{width:100%;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);margin-top:8px;font-size:16px;background:transparent;color:var(--text-light)}
-        .lockbox button{margin-top:12px;padding:10px 14px;border-radius:8px;border:0;background:var(--accent-green);color:var(--bg-dark);font-weight:600;cursor:pointer}
-        .err{color:#ff8080;margin-top:8px;font-size:14px}
-
-        /* toast & copy preview */
-        .toast{min-width:90px;max-width:320px;padding:10px 14px;border-radius:8px;text-align:center;position:fixed;left:50%;transform:translateX(-50%);bottom:14vh;background:#111;color:#fff;opacity:0;pointer-events:none;transition:all .2s ease;z-index:60}
-        .toast.show{opacity:1}
-        .toast .preview{display:block;font-size:13px;color:#fff;opacity:0.95}
-        .toast .label{display:block;font-size:12px;color:#bfeec8;margin-top:6px;opacity:0.9}
-
-        /* live-dot error */
-        .live-dot--error {
-          background-color: #ff3b3b !important;
-          box-shadow: 0 0 6px #ff3b3b, 0 0 14px rgba(255,59,59,0.6);
-          animation: pulseError 1.6s infinite;
-        }
-        @keyframes pulseError {
-          0% { transform: scale(0.92); opacity: 0.8; }
-          50% { transform: scale(1.08); opacity: 1; }
-          100% { transform: scale(0.92); opacity: 0.8; }
-        }
-
-        .status-bar{font-size:13px;color:var(--text-secondary);margin-top:6px}
-        @media (max-width:480px){ .chat-container{height:95vh;border-radius:14px} .chat-header{height:70px;padding:12px} .chat-input-wrapper input{padding:9px} }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Neon Dark Chat — Public (with Admin)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg-dark:#121212;--bg-surface:#1e1e1e;--accent-green:#00ff80;--text-light:#f0f0f0;--text-secondary:#999}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Poppins',sans-serif;background-color:var(--bg-dark);display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px;color:var(--text-light)}
+    .chat-container{width:100%;max-width:650px;height:90vh;background-color:var(--bg-surface);border-radius:20px;box-shadow:0 0 20px rgba(0,0,0,0.5),0 0 50px rgba(0,0,0,0.2);display:flex;flex-direction:column;overflow:hidden}
+    .chat-header{padding:18px 25px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--accent-green)}
+    .header-info{display:flex;flex-direction:column}
+    .main-title{font-size:1.2em;margin:0;font-weight:700}
+    .live-status{font-size:0.8em;color:var(--accent-green);display:flex;align-items:center;margin-top:2px}
+    .live-dot{height:8px;width:8px;background-color:var(--accent-green);border-radius:50%;margin-right:6px;box-shadow:0 0 5px var(--accent-green),0 0 10px var(--accent-green);animation:pulse 1.5s infinite}
+    @keyframes pulse{0%{transform:scale(0.9);opacity:0.7}50%{transform:scale(1.1);opacity:1}100%{transform:scale(0.9);opacity:0.7}}
+    .online-count{font-size:0.9em;color:var(--text-secondary)}
+    .chat-messages{flex-grow:1;padding:20px 25px;overflow-y:auto;display:flex;flex-direction:column;gap:15px;background:linear-gradient(180deg,rgba(0,0,0,0.02),transparent)}
+    .message{display:flex;position:relative}
+    .msg-bubble{max-width:75%;padding:12px 18px;border-radius:20px;line-height:1.5;font-size:0.95em;color:var(--text-light);position:relative}
+    .msg-username{display:block;font-weight:700;font-size:0.85em;margin-bottom:3px;color:var(--accent-green)}
+    .msg-time{display:block;text-align:right;font-size:0.7em;margin-top:5px;color:var(--text-secondary)}
+    .message-in{justify-content:flex-start}
+    .message-in .msg-bubble{background-color:#333;border-top-left-radius:5px}
+    .message-out{justify-content:flex-end}
+    .message-out .msg-bubble{background-color:#004d2b;border-top-right-radius:5px;box-shadow:0 0 10px rgba(0,255,128,0.6),inset 0 0 5px rgba(255,255,255,0.1)}
+    .chat-input-area{padding:15px 25px;background-color:#222;border-top:1px solid #333}
+    .chat-input-wrapper{display:flex;align-items:center;background-color:var(--bg-surface);border:1px solid var(--accent-green);border-radius:30px;padding:5px;box-shadow:0 0 10px rgba(0,255,128,0.3)}
+    .chat-input-wrapper input{flex-grow:1;padding:10px 18px;border:none;background:transparent;font-size:1em;outline:none;color:var(--text-light)}
+    .send-button{background-color:var(--accent-green);color:var(--bg-dark);width:45px;height:45px;border:none;border-radius:50%;cursor:pointer;display:flex;justify-content:center;align-items:center;transition:all 0.2s;box-shadow:0 0 10px var(--accent-green)}
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999}
+    .lockbox{background:var(--bg-surface);padding:22px;border-radius:12px;max-width:420px;width:92%;box-shadow:0 14px 40px rgba(0,0,0,0.6);text-align:center;color:var(--text-light)}
+    .lockbox input{width:100%;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);margin-top:8px;font-size:16px;background:transparent;color:var(--text-light)}
+    .lockbox button{margin-top:12px;padding:10px 14px;border-radius:8px;border:0;background:var(--accent-green);color:var(--bg-dark);font-weight:600;cursor:pointer}
+    .err{color:#ff8080;margin-top:8px;font-size:14px}
+    .toast{min-width:90px;max-width:320px;padding:10px 14px;border-radius:8px;text-align:center;position:fixed;left:50%;transform:translateX(-50%);bottom:14vh;background:#111;color:#fff;opacity:0;pointer-events:none;transition:all .2s ease;z-index:60}
+    .toast.show{opacity:1}
+    .toast .preview{display:block;font-size:13px;color:#fff;opacity:0.95}
+    .toast .label{display:block;font-size:12px;color:#bfeec8;margin-top:6px;opacity:0.9}
+    .live-dot--error{background-color:#ff3b3b !important;box-shadow:0 0 6px #ff3b3b,0 0 14px rgba(255,59,59,0.6);animation:pulseError 1.6s infinite}
+    @keyframes pulseError{0%{transform:scale(0.92);opacity:0.8}50%{transform:scale(1.08);opacity:1}100%{transform:scale(0.92);opacity:0.8}}
+    /* delete icon style (visible only for admin) */
+    .msg-delete{position:absolute;top:6px;right:6px;background:transparent;border:0;color:#ffb3b3;cursor:pointer;font-size:16px;padding:6px;border-radius:6px}
+    .msg-delete:hover{background:rgba(255,59,59,0.08)}
+    .status-bar{font-size:13px;color:var(--text-secondary);margin-top:6px}
+    @media (max-width:480px){.chat-container{height:95vh;border-radius:14px}.chat-header{height:70px;padding:12px}.chat-input-wrapper input{padding:9px}}
+  </style>
 </head>
 <body>
-    <div class="chat-container" role="application" aria-label="Public Chat">
-        <header class="chat-header">
-            <div class="header-info">
-                <h3 class="main-title">Public Chat</h3>
-                <span class="live-status"><span class="live-dot" aria-hidden="true"></span><span id="liveText">Live — connecting…</span></span>
-                <div class="status-bar" id="statusBar" style="display:block;color:var(--text-secondary)">Initializing…</div>
-            </div>
-            <div style="text-align:right">
-                <span class="online-count" id="onlineCount">— Active</span>
-            </div>
-        </header>
+  <div class="chat-container" role="application" aria-label="Public Chat">
+    <header class="chat-header">
+      <div class="header-info">
+        <h3 class="main-title">Public Chat</h3>
+        <span class="live-status"><span class="live-dot" aria-hidden="true"></span><span id="liveText">Live — connecting…</span></span>
+        <div class="status-bar" id="statusBar" style="display:block;color:var(--text-secondary)">Initializing…</div>
+      </div>
+      <div style="text-align:right">
+        <span class="online-count" id="onlineCount">— Active</span>
+      </div>
+    </header>
 
-        <div class="chat-messages" id="messages" aria-live="polite" aria-atomic="false"></div>
+    <div class="chat-messages" id="messages" aria-live="polite" aria-atomic="false"></div>
 
-        <div class="chat-input-area" id="chatInputArea" aria-hidden="true">
-            <div class="chat-input-wrapper">
-                <input id="textInput" type="text" placeholder="Type your message..." aria-label="Message input" />
-                <button id="sendBtn" class="send-button" aria-label="Send">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 20L18 12L10 4M18 12H4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-            </div>
-        </div>
+    <div class="chat-input-area" id="chatInputArea" aria-hidden="true">
+      <div class="chat-input-wrapper">
+        <input id="textInput" type="text" placeholder="Type your message..." aria-label="Message input" />
+        <button id="sendBtn" class="send-button" aria-label="Send">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 20L18 12L10 4M18 12H4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
     </div>
+  </div>
 
-    <!-- overlay for password -->
-    <div id="overlay" class="overlay" style="display:none" aria-hidden="true">
-        <div class="lockbox" role="dialog" aria-modal="true" aria-labelledby="locktitle">
-            <h2 id="locktitle">Enter Password to Open Chat</h2>
-            <p style="color:var(--text-secondary);margin-top:6px">একবার password দিলে এই ব্রাউজারে আর দিতে হবে না (30 দিন)।</p>
-            <input id="pwInput" type="password" placeholder="Password" autocomplete="current-password" />
-            <button id="pwBtn">Unlock</button>
-            <div id="pwErr" class="err" role="status" aria-live="polite" style="display:none"></div>
-        </div>
+  <!-- overlay for password -->
+  <div id="overlay" class="overlay" style="display:none" aria-hidden="true">
+    <div class="lockbox" role="dialog" aria-modal="true" aria-labelledby="locktitle">
+      <h2 id="locktitle">Enter Password to Open Chat</h2>
+      <p style="color:var(--text-secondary);margin-top:6px">একবার password দিলেই এই ব্রাউজারে আর দিতে হবে না (30 দিন)। অ্যাডমিন-মোডের জন্য আলাদা password আছে।</p>
+      <input id="pwInput" type="password" placeholder="Password" autocomplete="current-password" />
+      <button id="pwBtn">Unlock</button>
+      <div id="pwErr" class="err" role="status" aria-live="polite" style="display:none"></div>
+      <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.04)" />
+      <p style="font-size:13px;color:var(--text-secondary)">Admin হলে messages delete করার অপশন পাবে — Admin খুলতে নিচে admin password দাও</p>
+      <input id="adminPwInput" type="password" placeholder="Admin password" style="margin-top:8px" />
+      <button id="adminPwBtn" style="margin-top:6px;padding:8px 12px;border-radius:8px;border:0;background:#ff6b6b;color:#fff;cursor:pointer">Enable Admin</button>
+      <div id="adminMsg" style="margin-top:8px;color:var(--text-secondary);font-size:13px"></div>
     </div>
+  </div>
 
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <script type="module">
-    // ------------------ CONFIG ------------------
+  <script type="module">
+    // ---------- CONFIG ----------
     const firebaseConfig = {
       apiKey: "AIzaSyD_Z7-3oe8KK5XA6OyKe0D-tS_Z6KKmyZY",
       authDomain: "mychat-c5b4e.firebaseapp.com",
@@ -159,35 +104,39 @@
       measurementId: "G-YB9XZPPH41"
     };
 
-    // SHA-256 hash of "123789"
+    // main user-password hash (existing) - unchanged
     const PASSWORD_HASH = 'b7158b64a98516b31d0c23609f69265a868c594dda5b3c8da9e13159e209c9b6';
     const STORAGE_KEY = 'chat_auth_v1';
 
-    // ------------------ ELEMENTS ------------------
+    // ADMIN: the admin password (we will check it client-side then store only its hash)
+    // NOTE: this variable is needed client-side to verify admin password.
+    // If you want admin password not visible in GitHub, use server-side auth instead.
+    const ADMIN_PLAIN = '123789456';
+    const ADMIN_STORAGE_KEY = 'admin_auth_v1';
+
+    // ---------- ELEMENTS ----------
     const overlay = document.getElementById('overlay');
     const pwInput = document.getElementById('pwInput');
     const pwBtn = document.getElementById('pwBtn');
     const pwErr = document.getElementById('pwErr');
+    const adminPwInput = document.getElementById('adminPwInput');
+    const adminPwBtn = document.getElementById('adminPwBtn');
+    const adminMsg = document.getElementById('adminMsg');
+
     const messagesEl = document.getElementById('messages');
     const textInput = document.getElementById('textInput');
     const sendBtn = document.getElementById('sendBtn');
     const chatInputArea = document.getElementById('chatInputArea');
     const statusBar = document.getElementById('statusBar');
     const liveText = document.getElementById('liveText');
-    const onlineCount = document.getElementById('onlineCount');
     const toast = document.getElementById('toast');
 
     function escapeHTML(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
-    function showToastSimple(txt){
-      toast.textContent = txt;
-      toast.classList.add('show');
-      clearTimeout(window._toastTimer);
-      window._toastTimer = setTimeout(()=> toast.classList.remove('show'), 1400);
-    }
+    function showToastSimple(txt){ toast.textContent = txt; toast.classList.add('show'); clearTimeout(window._toastTimer); window._toastTimer = setTimeout(()=> toast.classList.remove('show'), 1400); }
 
-    // ------------------ FIREBASE IMPORTS & IMMEDIATE INIT (B) ------------------
+    // ---------- Firebase imports & init early (B) ----------
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js";
+    import { getDatabase, ref, push, onChildAdded, query, limitToLast, remove } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js";
 
     let db = null;
     let messagesRef = null;
@@ -203,26 +152,14 @@
       liveText.textContent = 'Offline';
     }
 
-    // ------------------ AUTH (localStorage, password overlay) ------------------
+    // ---------- auth overlay for normal users ----------
     (function maybeExpireAuth(){
       const ts = parseInt(localStorage.getItem(STORAGE_KEY + '_ts') || '0',10);
       if(ts){
         const days = (Date.now() - ts)/(1000*60*60*24);
-        if(days > 30){
-          localStorage.removeItem(STORAGE_KEY);
-          localStorage.removeItem(STORAGE_KEY + '_ts');
-        }
+        if(days > 30){ localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(STORAGE_KEY + '_ts'); }
       }
     })();
-
-    // show overlay if not authed
-    if(localStorage.getItem(STORAGE_KEY) === '1'){
-      unlockUI();
-    } else {
-      overlay.style.display = 'flex';
-      overlay.setAttribute('aria-hidden','false');
-      pwInput.focus();
-    }
 
     async function sha256hex(str){
       const enc = new TextEncoder();
@@ -231,6 +168,8 @@
       return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
     }
 
+    if(localStorage.getItem(STORAGE_KEY) === '1'){ unlockUI(); } else { overlay.style.display='flex'; pwInput.focus(); }
+
     async function tryPassword(pw){
       pwErr.style.display = 'none';
       try {
@@ -238,7 +177,6 @@
         if(h === PASSWORD_HASH){
           localStorage.setItem(STORAGE_KEY,'1');
           localStorage.setItem(STORAGE_KEY + '_ts', Date.now().toString());
-          // notify parent if embedded? (not needed for main index)
           unlockUI();
           return true;
         } else {
@@ -252,56 +190,104 @@
         return false;
       }
     }
-
     pwBtn.addEventListener('click', async ()=>{ await tryPassword(pwInput.value); pwInput.value=''; });
     pwInput.addEventListener('keydown', async (e)=>{ if(e.key==='Enter'){ e.preventDefault(); await tryPassword(pwInput.value); pwInput.value=''; } });
 
-    function unlockUI(){
-      overlay.style.display = 'none';
-      overlay.setAttribute('aria-hidden','true');
-      chatInputArea.setAttribute('aria-hidden','false');
-      chatInputArea.style.visibility = 'visible';
-      statusBar.textContent = 'Connecting to chat…';
-      initChat();
-    }
-
-    // ------------------ DETERMINISTIC CLIENT ID ------------------
-    let CLIENT_ID = localStorage.getItem('chat_clientId');
-    if(!CLIENT_ID){
-      CLIENT_ID = 'c_' + Math.random().toString(36).slice(2,10);
-      localStorage.setItem('chat_clientId', CLIENT_ID);
-    }
-
-    // ------------------ status & copy-preview toast helpers ------------------
-    const liveDot = document.querySelector('.live-dot');
-    function setLiveStatusOk(text = 'Live — receiving messages'){
-      if(liveDot) liveDot.classList.remove('live-dot--error');
-      liveText.textContent = text;
-      statusBar.textContent = text;
-      statusBar.style.color = '';
-    }
-    function setLiveStatusError(errMsg = 'Error connecting'){
-      if(liveDot) liveDot.classList.add('live-dot--error');
-      const short = (typeof errMsg === 'string' && errMsg.length > 120) ? errMsg.slice(0,120) + '…' : errMsg;
-      liveText.textContent = 'Error — ' + short;
-      statusBar.textContent = 'Error: ' + short;
-      statusBar.style.color = '#ff8080';
-      console.error('CHAT ERROR:', errMsg);
-    }
-    function showCopiedToast(text){
-      const preview = (text||'').trim().replace(/\s+/g,' ');
-      const short = preview.length > 60 ? preview.slice(0,60) + '…' : preview;
-      toast.innerHTML = `<span class="preview">${escapeHTML(short)}</span><span class="label">Copied to clipboard</span>`;
-      toast.classList.add('show');
-      clearTimeout(window._toastTimer);
-      window._toastTimer = setTimeout(()=> toast.classList.remove('show'), 1800);
-    }
-
-    // ------------------ render & listener attach ------------------
-    function renderMessage(data){
+    // ---------- ADMIN login: check plain, store hash in localStorage ----------
+    async function tryAdminPassword(pw){
+      adminMsg.textContent = '';
       try {
+        if(!pw) { adminMsg.textContent = 'Admin password খালি রাখা যাবে না'; return; }
+        if(pw === ADMIN_PLAIN){
+          // success -> store hashed form in localStorage for persistence
+          const ah = await sha256hex(pw);
+          localStorage.setItem(ADMIN_STORAGE_KEY, ah);
+          localStorage.setItem(ADMIN_STORAGE_KEY + '_ts', Date.now().toString());
+          adminMsg.textContent = 'Admin mode enabled ✅';
+          adminMsg.style.color = '#8ef1a4';
+          // reflect UI changes immediately
+          renderAdminUI(true);
+        } else {
+          adminMsg.textContent = 'Admin password ভুল';
+          adminMsg.style.color = '#ff9a9a';
+        }
+      } catch(e){
+        console.error('admin try error', e);
+        adminMsg.textContent = 'Error';
+      } finally { adminPwInput.value = ''; }
+    }
+    adminPwBtn.addEventListener('click', ()=> tryAdminPassword(adminPwInput.value));
+    adminPwInput.addEventListener('keydown', (e)=> { if(e.key==='Enter'){ e.preventDefault(); tryAdminPassword(adminPwInput.value); }});
+
+    // helper: check stored admin hash matches ADMIN_PLAIN
+    async function checkAdminStored(){
+      const stored = localStorage.getItem(ADMIN_STORAGE_KEY);
+      if(!stored) return false;
+      const expected = await sha256hex(ADMIN_PLAIN);
+      return stored === expected;
+    }
+
+    // Admin UI state
+    let IS_ADMIN = false;
+    async function restoreAdminState(){
+      IS_ADMIN = await checkAdminStored();
+      renderAdminUI(IS_ADMIN);
+    }
+    function renderAdminUI(isAdmin){
+      IS_ADMIN = !!isAdmin;
+      // add a small indicator in statusBar
+      if(IS_ADMIN){
+        statusBar.textContent = 'Admin mode ON';
+        statusBar.style.color = '#8ef1a4';
+      } else {
+        statusBar.textContent = 'Connected';
+        statusBar.style.color = '';
+      }
+      // show/hide delete icons for already rendered messages
+      document.querySelectorAll('.msg-delete').forEach(btn => btn.style.display = IS_ADMIN ? 'block' : 'none');
+    }
+
+    // ---------- client id ----------
+    let CLIENT_ID = localStorage.getItem('chat_clientId');
+    if(!CLIENT_ID){ CLIENT_ID = 'c_' + Math.random().toString(36).slice(2,10); localStorage.setItem('chat_clientId', CLIENT_ID); }
+
+    // ---------- status & toast ----------
+    const liveDot = document.querySelector('.live-dot');
+    function setLiveStatusOk(text='Live — receiving messages'){ if(liveDot) liveDot.classList.remove('live-dot--error'); liveText.textContent = text; statusBar.textContent = text; statusBar.style.color = ''; }
+    function setLiveStatusError(errMsg='Error connecting'){ if(liveDot) liveDot.classList.add('live-dot--error'); const short = (typeof errMsg === 'string' && errMsg.length>120)? errMsg.slice(0,120)+'…':errMsg; liveText.textContent = 'Error — '+short; statusBar.textContent = 'Error: '+short; statusBar.style.color = '#ff8080'; console.error('CHAT ERROR:', errMsg); }
+    function showCopiedToast(text){ const preview = (text||'').trim().replace(/\s+/g,' '); const short = preview.length>60 ? preview.slice(0,60)+'…' : preview; toast.innerHTML = `<span class="preview">${escapeHTML(short)}</span><span class="label">Copied to clipboard</span>`; toast.classList.add('show'); clearTimeout(window._toastTimer); window._toastTimer = setTimeout(()=> toast.classList.remove('show'), 1800); }
+
+    // ---------- render messages (with key) ----------
+    // We'll render messages and attach a delete button if admin mode on.
+    function makeDeleteBtn(key){
+      const btn = document.createElement('button');
+      btn.className = 'msg-delete';
+      btn.title = 'Delete message (admin)';
+      btn.innerHTML = '🗑️';
+      btn.style.display = IS_ADMIN ? 'block' : 'none';
+      btn.addEventListener('click', async (e)=>{
+        e.stopPropagation();
+        const ok = confirm('Are you sure you want to delete this message? This action cannot be undone.');
+        if(!ok) return;
+        try {
+          await remove(ref(db, 'messages/' + key));
+          showToastSimple('Message removed');
+        } catch(err){
+          console.error('delete failed', err);
+          showToastSimple('Delete failed');
+          setLiveStatusError(err && err.message ? err.message : 'Delete failed');
+        }
+      });
+      return btn;
+    }
+
+    function renderMessageWithKey(key, data){
+      try {
+        // container
         const wrap = document.createElement('div');
         wrap.className = 'message ' + ((data.clientId && data.clientId === CLIENT_ID) ? 'message-out' : 'message-in');
+
+        // bubble
         const bubble = document.createElement('div');
         bubble.className = 'msg-bubble';
         if(data.user){
@@ -310,6 +296,7 @@
           un.textContent = data.user;
           bubble.appendChild(un);
         }
+
         const p = document.createElement('p');
         p.innerHTML = escapeHTML(data.text || '');
         bubble.appendChild(p);
@@ -318,51 +305,46 @@
         t.textContent = data.time ? new Date(data.time).toLocaleString() : '';
         bubble.appendChild(t);
 
+        // copy on click
         bubble.addEventListener('click', async ()=> {
-          try {
-            await navigator.clipboard.writeText(data.text || '');
-            showCopiedToast(data.text || '');
-          } catch(e){
-            showToastSimple('Copy failed');
-            console.error('Copy failed', e);
-          }
+          try { await navigator.clipboard.writeText(data.text || ''); showCopiedToast(data.text || ''); }
+          catch(e){ showToastSimple('Copy failed'); console.error(e); }
         });
 
+        // delete btn (admin)
+        const delBtn = makeDeleteBtn(key);
+
         wrap.appendChild(bubble);
+        wrap.appendChild(delBtn);
         messagesEl.appendChild(wrap);
         messagesEl.scrollTop = messagesEl.scrollHeight;
-      } catch(err){
-        console.error('renderMessage error', err);
-      }
+      } catch(err){ console.error('renderMessage error', err); }
     }
 
+    // ---------- attach listeners ----------
     function initChat(){
-      if(!messagesRef){
-        setLiveStatusError('Database not available');
-        return;
-      }
-
+      if(!messagesRef){ setLiveStatusError('Database not available'); return; }
       try {
+        // note: we use snapshot.key to know message key for delete
         onChildAdded(query(messagesRef, limitToLast(200)), snap => {
           const val = snap.val();
           if(!val) return;
-          renderMessage(val);
+          renderMessageWithKey(snap.key, val);
         }, (err) => {
           setLiveStatusError(err && err.message ? err.message : 'Realtime DB error');
         });
-
         setLiveStatusOk('Live — receiving messages');
         chatInputArea.style.visibility = 'visible';
-      } catch (e){
+      } catch(e){
         console.error('Listener attach failed', e);
         setLiveStatusError(e && e.message ? e.message : 'Listener attach failed');
       }
 
-      // Send handlers
+      // send handlers
       sendBtn.addEventListener('click', sendMessage);
-      textInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter'){ e.preventDefault(); sendMessage(); } });
+      textInput.addEventListener('keydown', (e)=> { if(e.key==='Enter'){ e.preventDefault(); sendMessage(); } });
 
-      // keyboard / resize
+      // mobile keyboard handling
       window.addEventListener('resize', ()=>{ setTimeout(()=> { messagesEl.scrollTop = messagesEl.scrollHeight; window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' }); }, 120); });
       setTimeout(()=> { messagesEl.scrollTop = messagesEl.scrollHeight; }, 400);
     }
@@ -376,17 +358,32 @@
         textInput.value = '';
         textInput.focus();
         setLiveStatusOk('Live — receiving messages');
-      } catch (e){
+      } catch(e){
         console.error('Send failed', e);
         setLiveStatusError(e && e.message ? e.message : 'Send failed');
         showToastSimple('Send failed');
       }
     }
 
-    // network handlers
+    // ---------- unlock UI ----------
+    function unlockUI(){
+      overlay.style.display = 'none';
+      overlay.setAttribute('aria-hidden','true');
+      chatInputArea.setAttribute('aria-hidden','false');
+      chatInputArea.style.visibility = 'visible';
+      statusBar.textContent = 'Connecting to chat…';
+      initChat();
+      // restore admin state (if stored)
+      restoreAdminState();
+    }
+
+    // ---------- network handlers ----------
     window.addEventListener('offline', ()=> { setLiveStatusError('Offline — check network'); });
     window.addEventListener('online', ()=> { setLiveStatusOk('Live — back online'); setTimeout(()=> setLiveStatusOk('Live — receiving messages'), 1200); });
 
-    </script>
+    // on load, try to restore admin state if already stored (even before unlock)
+    (async ()=>{ await restoreAdminState(); })();
+
+  </script>
 </body>
 </html>
