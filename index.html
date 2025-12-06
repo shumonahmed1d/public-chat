@@ -1,66 +1,140 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="bn">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Public Chat — Debug Friendly</title>
-  <style>
-    :root{--bg:#f3f6fb;--card:#fff;--accent:#276ef1;--muted:#6b7280}
-    html,body{height:100%;margin:0;background:linear-gradient(180deg,#eef6ff 0%,var(--bg) 100%);font-family:Inter,system-ui,"Noto Sans Bengali",sans-serif;color:#111}
-    .wrap{max-width:920px;margin:0 auto;padding:16px;display:flex;flex-direction:column;height:100vh;box-sizing:border-box}
-    header{display:flex;align-items:center;gap:12px;padding:6px 4px}
-    h1{margin:0;font-size:20px}
-    .status{font-size:13px;color:var(--muted);margin-left:8px}
-    .chat-card{background:var(--card);border-radius:12px;padding:12px;flex:1;display:flex;flex-direction:column;box-shadow:0 6px 20px rgba(34,60,80,0.06);min-height:0}
-    #messages{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
-    .msg{max-width:78%;padding:10px 12px;border-radius:12px;box-shadow:0 2px 6px rgba(16,24,40,0.04);position:relative;word-break:break-word}
-    .msg--me{align-self:flex-end;background:#e8f0ff}
-    .msg--other{align-self:flex-start;background:#fff}
-    .time{font-size:11px;color:var(--muted);margin-top:6px;text-align:right}
-    .hint{font-size:13px;color:var(--muted);text-align:center;margin-bottom:6px}
-    .chat-footer{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;padding:12px;background:linear-gradient(to top, rgba(243,246,251,0.95), rgba(243,246,251,0.6));box-shadow:0 -8px 30px rgba(16,24,40,0.06);backdrop-filter: blur(4px);z-index:40;padding-bottom:calc(env(safe-area-inset-bottom)+12px)}
-    .composer{width:100%;max-width:920px;display:flex;gap:8px;align-items:center}
-    .input{flex:1;display:flex;gap:8px;align-items:center;background:#fff;border-radius:999px;padding:8px;border:1px solid rgba(16,24,40,0.06)}
-    .input input{flex:1;border:0;outline:none;padding:10px 8px;font-size:15px;border-radius:8px}
-    button.send{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:10px;font-weight:600}
-    .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:12vh;background:#111;color:#fff;padding:8px 12px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:all .25s ease;z-index:60}
-    .toast.show{opacity:1}
-    .debug{font-size:13px;color:#b03;margin-top:6px}
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Neon Dark Chat — Public</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- CSS STYLING START (from your UI) --- */
+        :root {
+            --bg-dark: #121212;
+            --bg-surface: #1e1e1e;
+            --accent-green: #00ff80;
+            --text-light: #f0f0f0;
+            --text-secondary: #999;
+        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{
+            font-family:'Poppins',sans-serif;
+            background-color:var(--bg-dark);
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            min-height:100vh;
+            padding:20px;
+            color:var(--text-light);
+        }
+        .chat-container{
+            width:100%;
+            max-width:650px;
+            height:90vh;
+            background-color:var(--bg-surface);
+            border-radius:20px;
+            box-shadow:0 0 20px rgba(0,0,0,0.5),0 0 50px rgba(0,0,0,0.2);
+            display:flex;
+            flex-direction:column;
+            overflow:hidden;
+        }
+        .chat-header{
+            background-color:var(--bg-surface);
+            color:var(--text-light);
+            padding:18px 25px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            font-weight:600;
+            border-bottom:2px solid var(--accent-green);
+            box-shadow:0 2px 10px rgba(0,255,128,0.06);
+            height:75px;
+        }
+        .header-info{display:flex;flex-direction:column;justify-content:center}
+        .main-title{font-size:1.2em;margin:0;font-weight:700}
+        .live-status{font-size:0.8em;font-weight:400;color:var(--accent-green);display:flex;align-items:center;margin-top:2px}
+        .live-dot{height:8px;width:8px;background-color:var(--accent-green);border-radius:50%;margin-right:6px;box-shadow:0 0 5px var(--accent-green),0 0 10px var(--accent-green);animation:pulse 1.5s infinite}
+        @keyframes pulse{0%{transform:scale(0.9);opacity:0.7}50%{transform:scale(1.1);opacity:1}100%{transform:scale(0.9);opacity:0.7}}
+        .online-count{font-size:0.9em;color:var(--text-secondary)}
+
+        .chat-messages{flex-grow:1;padding:20px 25px;overflow-y:auto;display:flex;flex-direction:column;gap:15px;background:linear-gradient(180deg,rgba(0,0,0,0.02),transparent)}
+        .chat-messages::-webkit-scrollbar{width:6px}
+        .chat-messages::-webkit-scrollbar-thumb{background:#444;border-radius:3px}
+
+        .message{display:flex}
+        .msg-bubble{max-width:75%;padding:12px 18px;border-radius:20px;line-height:1.5;font-size:0.95em;position:relative;color:var(--text-light)}
+        .msg-username{display:block;font-weight:700;font-size:0.85em;margin-bottom:3px}
+        .msg-time{display:block;text-align:right;font-size:0.7em;margin-top:5px;color:var(--text-secondary)}
+
+        .message-in{justify-content:flex-start}
+        .message-in .msg-bubble{background-color:#333;border-top-left-radius:5px}
+        .message-in .msg-username{color:var(--accent-green)}
+
+        .message-out{justify-content:flex-end}
+        .message-out .msg-bubble{background-color:#004d2b;border-top-right-radius:5px;box-shadow:0 0 10px rgba(0,255,128,0.6),inset 0 0 5px rgba(255,255,255,0.1)}
+        .message-out .msg-time{color:var(--text-light);opacity:0.7}
+
+        .chat-input-area{padding:15px 25px;background-color:#222;border-top:1px solid #333}
+        .chat-input-wrapper{display:flex;align-items:center;background-color:var(--bg-surface);border:1px solid var(--accent-green);border-radius:30px;padding:5px;box-shadow:0 0 10px rgba(0,255,128,0.3)}
+        .chat-input-wrapper input{flex-grow:1;padding:10px 18px;border:none;background:transparent;font-size:1em;outline:none;color:var(--text-light)}
+        .chat-input-wrapper input::placeholder{color:var(--text-secondary)}
+        .send-button{background-color:var(--accent-green);color:var(--bg-dark);width:45px;height:45px;border:none;border-radius:50%;cursor:pointer;display:flex;justify-content:center;align-items:center;transition:all 0.2s;box-shadow:0 0 10px var(--accent-green)}
+        .send-button:hover{background-color:#4dffa3;box-shadow:0 0 15px var(--accent-green);transform:scale(1.05)}
+        .send-button svg{width:20px;height:20px;transform:translateX(2px)}
+
+        /* overlay (password) */
+        .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999}
+        .lockbox{background:var(--bg-surface);padding:22px;border-radius:12px;max-width:420px;width:92%;box-shadow:0 14px 40px rgba(0,0,0,0.6);text-align:center;color:var(--text-light)}
+        .lockbox input{width:100%;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);margin-top:8px;font-size:16px;background:transparent;color:var(--text-light)}
+        .lockbox button{margin-top:12px;padding:10px 14px;border-radius:8px;border:0;background:var(--accent-green);color:var(--bg-dark);font-weight:600;cursor:pointer}
+        .err{color:#ff8080;margin-top:8px;font-size:14px}
+
+        .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:14vh;background:#111;color:#fff;padding:8px 12px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:all .25s ease;z-index:60}
+        .toast.show{opacity:1}
+
+        .status-bar{font-size:13px;color:var(--text-secondary);margin-top:6px}
+        @media (max-width:480px){ .chat-container{height:95vh;border-radius:14px} .chat-header{height:70px;padding:12px} .chat-input-wrapper input{padding:9px} }
+        /* --- CSS END --- */
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div style="width:44px;height:44px;background:#276ef1;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">C</div>
-      <div>
-        <h1>Public Chat</h1>
-        <div style="display:flex;gap:8px;align-items:center">
-          <span class="status" id="status">Connecting…</span>
-          <span id="status-emoji"></span>
+    <div class="chat-container" role="application" aria-label="Public Chat">
+        <header class="chat-header">
+            <div class="header-info">
+                <h3 class="main-title">Public Chat</h3>
+                <span class="live-status"><span class="live-dot" aria-hidden="true"></span><span id="liveText">Live — connecting…</span></span>
+                <div class="status-bar" id="statusBar" style="display:block;color:var(--text-secondary)">Initializing…</div>
+            </div>
+            <div style="text-align:right">
+                <span class="online-count" id="onlineCount">— Active</span>
+            </div>
+        </header>
+
+        <div class="chat-messages" id="messages" aria-live="polite" aria-atomic="false"></div>
+
+        <div class="chat-input-area" id="chatInputArea" aria-hidden="true">
+            <div class="chat-input-wrapper">
+                <input id="textInput" type="text" placeholder="Type your message..." aria-label="Message input" />
+                <button id="sendBtn" class="send-button" aria-label="Send">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 20L18 12L10 4M18 12H4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
         </div>
-      </div>
-    </header>
-
-    <div class="chat-card">
-      <div class="hint" id="hint">Loading messages…</div>
-      <div id="messages" aria-live="polite"></div>
-      <div id="debugArea" class="debug" style="display:none"></div>
     </div>
-  </div>
 
-  <div class="chat-footer" id="chatFooter" style="visibility:hidden">
-    <div class="composer">
-      <div class="input">
-        <input id="textInput" type="text" placeholder="Message লিখে Enter চাপো অথবা Send টিপো..." autocomplete="off" />
-      </div>
-      <button class="send" id="sendBtn">Send</button>
+    <!-- overlay for password -->
+    <div id="overlay" class="overlay" style="display:none" aria-hidden="true">
+        <div class="lockbox" role="dialog" aria-modal="true" aria-labelledby="locktitle">
+            <h2 id="locktitle">Enter Password to Open Chat</h2>
+            <p style="color:var(--text-secondary);margin-top:6px">একবার password দিলে এই ব্রাউজারে আর দিতে হবে না (30 দিন)।</p>
+            <input id="pwInput" type="password" placeholder="Password" autocomplete="current-password" />
+            <button id="pwBtn">Unlock</button>
+            <div id="pwErr" class="err" role="status" aria-live="polite" style="display:none"></div>
+        </div>
     </div>
-  </div>
 
-  <div class="toast" id="toast">Copied</div>
+    <div id="toast" class="toast" role="status" aria-live="polite">Copied</div>
 
-  <script type="module">
-    // ---------- config ----------
+    <script type="module">
+    // ------------------ CONFIG ------------------
     const firebaseConfig = {
       apiKey: "AIzaSyD_Z7-3oe8KK5XA6OyKe0D-tS_Z6KKmyZY",
       authDomain: "mychat-c5b4e.firebaseapp.com",
@@ -72,96 +146,187 @@
       measurementId: "G-YB9XZPPH41"
     };
 
-    // UI elements
-    const statusEl = document.getElementById('status');
-    const hintEl = document.getElementById('hint');
+    // SHA-256 hash of "123789"
+    const PASSWORD_HASH = 'b7158b64a98516b31d0c23609f69265a868c594dda5b3c8da9e13159e209c9b6';
+    const STORAGE_KEY = 'chat_auth_v1';
+
+    // ------------------ ELEMENTS ------------------
+    const overlay = document.getElementById('overlay');
+    const pwInput = document.getElementById('pwInput');
+    const pwBtn = document.getElementById('pwBtn');
+    const pwErr = document.getElementById('pwErr');
     const messagesEl = document.getElementById('messages');
-    const debugEl = document.getElementById('debugArea');
     const textInput = document.getElementById('textInput');
     const sendBtn = document.getElementById('sendBtn');
-    const chatFooter = document.getElementById('chatFooter');
+    const chatInputArea = document.getElementById('chatInputArea');
+    const statusBar = document.getElementById('statusBar');
+    const liveText = document.getElementById('liveText');
+    const onlineCount = document.getElementById('onlineCount');
     const toast = document.getElementById('toast');
 
     function showToast(txt){
       toast.textContent = txt;
       toast.classList.add('show');
-      clearTimeout(window._t);
-      window._t = setTimeout(()=> toast.classList.remove('show'), 1400);
-    }
-    function setStatus(txt, color = '#6b7280'){ statusEl.textContent = txt; statusEl.style.color = color; }
-
-    // small helper to show debug error
-    function showDebug(msg){
-      debugEl.style.display = 'block';
-      debugEl.textContent = msg;
-      console.warn('CHAT-DEBUG:', msg);
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(()=> toast.classList.remove('show'), 1500);
     }
 
-    // client id
+    async function sha256hex(str){
+      const enc = new TextEncoder();
+      const data = enc.encode(str);
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+
+    // ------------------ AUTH (localStorage) ------------------
+    (function maybeExpireAuth(){
+      const ts = parseInt(localStorage.getItem(STORAGE_KEY + '_ts') || '0',10);
+      if(ts){
+        const days = (Date.now() - ts)/(1000*60*60*24);
+        if(days > 30){
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(STORAGE_KEY + '_ts');
+        }
+      }
+    })();
+
+    // show overlay if not authed
+    if(localStorage.getItem(STORAGE_KEY) === '1'){
+      unlockUI();
+    } else {
+      overlay.style.display = 'flex';
+      overlay.setAttribute('aria-hidden','false');
+      pwInput.focus();
+    }
+
+    async function tryPassword(pw){
+      pwErr.style.display = 'none';
+      try {
+        const h = await sha256hex(pw||'');
+        if(h === PASSWORD_HASH){
+          localStorage.setItem(STORAGE_KEY,'1');
+          localStorage.setItem(STORAGE_KEY + '_ts', Date.now().toString());
+          unlockUI();
+          return true;
+        } else {
+          pwErr.textContent = 'Password ভুল — আবার চেষ্টা করো';
+          pwErr.style.display = 'block';
+          return false;
+        }
+      } catch(e){
+        pwErr.textContent = 'Error';
+        pwErr.style.display = 'block';
+        return false;
+      }
+    }
+
+    pwBtn.addEventListener('click', async ()=>{ await tryPassword(pwInput.value); pwInput.value=''; });
+    pwInput.addEventListener('keydown', async (e)=>{ if(e.key==='Enter'){ e.preventDefault(); await tryPassword(pwInput.value); pwInput.value=''; } });
+
+    function unlockUI(){
+      overlay.style.display = 'none';
+      overlay.setAttribute('aria-hidden','true');
+      chatInputArea.setAttribute('aria-hidden','false');
+      chatInputArea.style.visibility = 'visible';
+      statusBar.textContent = 'Connecting to chat…';
+      initChat();
+    }
+
+    // ------------------ CLIENT ID (deterministic) ------------------
     let CLIENT_ID = localStorage.getItem('chat_clientId');
-    if(!CLIENT_ID){ CLIENT_ID = 'c_' + Math.random().toString(36).slice(2,10); localStorage.setItem('chat_clientId', CLIENT_ID); }
+    if(!CLIENT_ID){
+      CLIENT_ID = 'c_' + Math.random().toString(36).slice(2,10);
+      localStorage.setItem('chat_clientId', CLIENT_ID);
+    }
 
-    // imports
+    // ------------------ FIREBASE CHAT ------------------
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js";
     import { getDatabase, ref, push, onChildAdded, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js";
 
-    // try initialize and attach listeners safely
     let db, messagesRef;
     try {
       const app = initializeApp(firebaseConfig);
-      const database = getDatabase(app);
-      db = database;
+      db = getDatabase(app);
       messagesRef = ref(db, 'messages');
-      setStatus('Connected ✅', '#0a8a0a');
-      hintEl.textContent = 'Messages টিপলে copy হবে';
-      chatFooter.style.visibility = 'visible';
+      // note: don't init listeners here; do after unlockUI calls initChat()
     } catch (e){
-      setStatus('Init failed ❌', '#b03');
-      showDebug('Firebase initialize failed: ' + (e && e.message ? e.message : e));
-      // don't continue if firebase init failed
+      console.error('Firebase init failed', e);
+      statusBar.textContent = 'Firebase init failed';
+      liveText.textContent = 'Offline';
     }
 
-    // if DB initialized, attach listener
-    if(messagesRef){
-      try {
-        // show last 200 messages
-        onChildAdded(query(messagesRef, limitToLast(200)), snap => {
-          try {
-            const val = snap.val();
-            if(!val) return;
-            renderMessage(val);
-          } catch (err) {
-            showDebug('Render error: ' + err && err.message);
-          }
-        });
-        // success
-        setStatus('Live — receiving messages', '#0a6');
-        hintEl.textContent = 'মেসেজ ট্যাপ করলে কপি হবে';
-      } catch (e){
-        setStatus('Listener failed ❌', '#b03');
-        showDebug('Listener attach failed: ' + (e && e.message ? e.message : e));
-      }
-    } else {
-      showDebug('messagesRef not available');
-    }
-
-    // render message
     function escapeHTML(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
     function renderMessage(data){
-      const el = document.createElement('div');
-      const isMe = data.clientId && data.clientId === CLIENT_ID;
-      el.className = 'msg ' + (isMe ? 'msg--me' : 'msg--other');
-      const safe = escapeHTML(data.text || '');
-      el.innerHTML = `<div>${safe}</div><div class="time">${data.time?new Date(data.time).toLocaleString():''}</div>`;
-      el.addEventListener('click', async ()=> {
-        try { await navigator.clipboard.writeText(data.text||''); showToast('Copied'); }
-        catch(e){ showToast('Copy failed'); console.error(e); }
-      });
-      messagesEl.appendChild(el);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      try {
+        const wrap = document.createElement('div');
+        wrap.className = 'message ' + ((data.clientId && data.clientId === CLIENT_ID) ? 'message-out' : 'message-in');
+        const bubble = document.createElement('div');
+        bubble.className = 'msg-bubble';
+        // if sender provided username show it
+        if(data.user){
+          const un = document.createElement('span');
+          un.className = 'msg-username';
+          un.textContent = data.user;
+          bubble.appendChild(un);
+        }
+        const p = document.createElement('p');
+        p.innerHTML = escapeHTML(data.text || '');
+        bubble.appendChild(p);
+        const t = document.createElement('span');
+        t.className = 'msg-time';
+        t.textContent = data.time ? new Date(data.time).toLocaleString() : '';
+        bubble.appendChild(t);
+
+        // click to copy
+        bubble.addEventListener('click', async ()=> {
+          try { await navigator.clipboard.writeText(data.text || ''); showToast('Copied'); }
+          catch(e){ showToast('Copy failed'); console.error(e); }
+        });
+
+        wrap.appendChild(bubble);
+        messagesEl.appendChild(wrap);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      } catch(err){
+        console.error('renderMessage error', err);
+      }
     }
 
-    // send
+    function initChat(){
+      if(!messagesRef){
+        statusBar.textContent = 'Database not available';
+        liveText.textContent = 'Offline';
+        return;
+      }
+
+      // attach listener
+      try {
+        onChildAdded(query(messagesRef, limitToLast(200)), snap => {
+          const val = snap.val();
+          if(!val) return;
+          renderMessage(val);
+        });
+        statusBar.textContent = 'Live — receiving messages';
+        liveText.textContent = 'Live — receiving messages';
+        onlineCount.textContent = '— Active';
+        chatInputArea.style.visibility = 'visible';
+      } catch (e){
+        console.error('Listener attach failed', e);
+        statusBar.textContent = 'Listener failed';
+        liveText.textContent = 'Offline';
+      }
+
+      // Send handlers
+      sendBtn.addEventListener('click', sendMessage);
+      textInput.addEventListener('keydown', (e)=> {
+        if(e.key === 'Enter'){ e.preventDefault(); sendMessage(); }
+      });
+
+      // keyboard / resize behavior for mobile
+      window.addEventListener('resize', ()=>{ setTimeout(()=> { messagesEl.scrollTop = messagesEl.scrollHeight; window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' }); }, 120); });
+      setTimeout(()=> { messagesEl.scrollTop = messagesEl.scrollHeight; }, 400);
+    }
+
     async function sendMessage(){
       const txt = textInput.value.trim();
       if(!txt) return;
@@ -171,25 +336,15 @@
         textInput.value = '';
         textInput.focus();
       } catch (e){
+        console.error('Send failed', e);
         showToast('Send failed');
-        showDebug('Send failed: ' + (e && e.message ? e.message : e));
       }
     }
 
-    sendBtn.addEventListener('click', sendMessage);
-    textInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter'){ e.preventDefault(); sendMessage(); } });
+    // network handlers
+    window.addEventListener('offline', ()=> { statusBar.textContent = 'Offline — check network'; liveText.textContent = 'Offline'; });
+    window.addEventListener('online', ()=> { statusBar.textContent = 'Online — reconnecting…'; liveText.textContent = 'Live — reconnecting…'; setTimeout(()=> { statusBar.textContent = 'Live — receiving messages'; liveText.textContent = 'Live — receiving messages'; }, 1200); });
 
-    // network and visibility handling
-    window.addEventListener('offline', () => { setStatus('Offline — check network', '#b03'); showDebug('You are offline'); });
-    window.addEventListener('online', () => { setStatus('Online — reconnecting…', '#d90'); setTimeout(()=> setStatus('Live — receiving messages', '#0a6'), 1200); });
-
-    // initial no-messages hint
-    setTimeout(()=> {
-      if(messagesEl.children.length === 0) {
-        hintEl.textContent = 'কোনো message পাওয়া যায়নি — Send করে দেখো';
-      }
-    }, 800);
-
-  </script>
+    </script>
 </body>
 </html>
